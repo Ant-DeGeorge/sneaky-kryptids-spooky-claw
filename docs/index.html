@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sneaky Kryptid's Spooky Claw</title>
+<meta name="description" content="A haunted claw-machine Game Boy Color game. 4 worlds, one mischievous Lil Redcap, 5-star ranks. Play it in your browser.">
+<meta property="og:title" content="Sneaky Kryptid's Spooky Claw">
+<meta property="og:description" content="Beat Lil Redcap across 4 haunted worlds. Play it free in your browser.">
+<meta property="og:image" content="media/title.png">
+<link rel="icon" href="media/redcap.png">
+<style>
+:root{
+  --bg:#0c0714; --bg2:#150c24; --card:#1b1030; --line:#34205a;
+  --text:#efe6ff; --mute:#a99bc9; --orange:#ff8a1f; --gold:#ffd23f; --green:#6dff7a; --purple:#9b5cff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2a1250 0%,var(--bg) 60%) fixed,var(--bg);color:var(--text);
+  font:16px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+img,canvas{image-rendering:pixelated}
+a{color:var(--gold)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+h1,h2,h3{line-height:1.15;margin:0}
+h2{font-size:clamp(22px,4vw,32px);color:var(--orange);margin-bottom:6px;text-shadow:0 0 18px #ff8a1f55}
+.sub{color:var(--mute);margin:0 0 24px}
+section{padding:48px 0}
+
+/* fog + bats */
+.fog{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.bat{position:absolute;font-size:22px;opacity:.55;animation:fly linear infinite}
+@keyframes fly{from{transform:translateX(-10vw) translateY(0)}50%{transform:translateX(50vw) translateY(-30px)}to{transform:translateX(110vw) translateY(10px)}}
+main,header,footer{position:relative;z-index:1}
+
+/* hero */
+.hero{text-align:center;padding:56px 0 24px}
+.kicker{color:var(--green);letter-spacing:.25em;font-size:12px;text-transform:uppercase}
+h1{font-size:clamp(30px,7vw,64px);margin:10px 0 6px;color:var(--gold);
+  text-shadow:0 0 0 #000,3px 3px 0 #b3410f,0 0 30px #ff8a1f66;animation:glow 3s ease-in-out infinite}
+@keyframes glow{50%{text-shadow:3px 3px 0 #b3410f,0 0 46px #ff8a1fcc}}
+.tag{font-size:clamp(14px,2.4vw,18px);color:var(--mute);max-width:640px;margin:0 auto 26px}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;padding:13px 22px;border-radius:12px;border:2px solid var(--orange);color:#1a0a00;background:var(--orange);
+  font-weight:700;text-decoration:none;box-shadow:0 5px 0 #8a3f00;transition:transform .08s,box-shadow .08s}
+.btn:hover{transform:translateY(2px);box-shadow:0 3px 0 #8a3f00}
+.btn.alt{background:transparent;color:var(--text);border-color:var(--purple);box-shadow:0 5px 0 #3b1f78}
+.btn.alt:hover{box-shadow:0 3px 0 #3b1f78}
+
+/* console */
+.console{margin:36px auto 0;max-width:560px;background:linear-gradient(160deg,#7a3fd1,#4a1f94);border-radius:22px 22px 70px 22px;
+  padding:20px 20px 26px;border:3px solid #2c1260;box-shadow:0 20px 60px #000a,0 0 60px #7a3fd155 inset}
+.bezel{background:#16102a;border-radius:12px 12px 36px 12px;padding:14px;border:3px solid #0d0820}
+.screenbox{position:relative;background:#000;aspect-ratio:160/144;width:100%}
+canvas#screen{width:100%;height:100%;display:block;background:#000}
+.poster{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:url(media/title.png) center/cover no-repeat;cursor:pointer}
+.poster::after{content:"";position:absolute;inset:0;background:#0009}
+.poster span{position:relative;z-index:1}
+.play{font-size:20px;padding:14px 26px;background:var(--orange);color:#1a0a00;border-radius:12px;font-weight:800;box-shadow:0 5px 0 #8a3f00;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{transform:scale(1.07)}}
+.hint{font-size:12px;color:#fff}
+.pad{display:flex;justify-content:space-between;align-items:center;margin-top:22px;user-select:none;-webkit-user-select:none;touch-action:none}
+.dpad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:2px}
+.dpad button{border:0;background:#0f0a20;color:#c9b6ff;font-size:20px;border-radius:8px}
+.dpad .u{grid-column:2}.dpad .l{grid-column:1;grid-row:2}.dpad .r{grid-column:3;grid-row:2}.dpad .d{grid-column:2;grid-row:3}
+.dpad button:active,.ab button:active,.ss button:active{filter:brightness(1.8);transform:scale(.94)}
+.ab{display:flex;gap:14px;transform:rotate(-18deg)}
+.ab button{width:62px;height:62px;border-radius:50%;border:0;background:#c23b86;color:#fff;font-weight:800;font-size:18px;box-shadow:0 4px 0 #6d1b49}
+.ss{display:flex;gap:12px;justify-content:center;margin-top:16px}
+.ss button{border:0;background:#0f0a20;color:#c9b6ff;padding:6px 14px;border-radius:99px;font:inherit;font-size:12px;transform:rotate(-18deg)}
+.keys{color:var(--mute);font-size:12px;text-align:center;margin-top:12px}
+.err{display:none;color:#ff9a9a;text-align:center;margin-top:10px;font-size:13px}
+
+/* grids */
+.grid{display:grid;gap:16px}
+.worlds{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:transform .15s,border-color .15s}
+.card:hover{transform:translateY(-4px) rotate(-.4deg);border-color:var(--orange)}
+.card img{width:100%;display:block;background:#000}
+.card .b{padding:12px 14px 16px}
+.card h3{font-size:17px;color:var(--gold)}
+.card .new{display:inline-block;margin-top:8px;font-size:12px;color:#05210a;background:var(--green);border-radius:99px;padding:2px 10px;font-weight:700}
+.card p{margin:8px 0 0;color:var(--mute);font-size:14px}
+.two{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:center}
+.shots{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.shots img{width:100%;border:2px solid var(--line);border-radius:10px}
+.stars{font-size:28px;letter-spacing:6px;color:var(--gold);text-shadow:0 0 14px #ffd23f88}
+.stat{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:0 0 8px}
+.stat div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px;text-align:center}
+.stat b{display:block;font-size:26px;color:var(--green)}
+.stat small{color:var(--mute)}
+pre{background:#0a0614;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:13px}
+ol.steps{padding-left:22px}
+ol.steps li{margin:8px 0}
+.note{border-left:4px solid var(--purple);background:var(--bg2);padding:10px 14px;border-radius:0 10px 10px 0;color:var(--mute);font-size:14px}
+footer{padding:40px 0 60px;text-align:center;color:var(--mute);font-size:13px;border-top:1px solid var(--line)}
+@media (max-width:520px){.dpad{grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px)}.ab button{width:54px;height:54px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="fog" aria-hidden="true">
+  <span class="bat" style="top:8%;animation-duration:26s">🦇</span>
+  <span class="bat" style="top:22%;animation-duration:38s;animation-delay:-12s;font-size:16px">🦇</span>
+  <span class="bat" style="top:60%;animation-duration:32s;animation-delay:-20s;font-size:26px">🦇</span>
+</div>
+
+<header class="hero wrap">
+  <div class="kicker">A Game Boy Color game for the ModRetro Chromatic</div>
+  <h1>Sneaky Kryptid's<br>Spooky Claw</h1>
+  <p class="tag">Grab the loot before <b style="color:var(--orange)">Lil Redcap</b> steals it. Four haunted worlds. Eight levels. Five stars each. Built for little players.</p>
+  <div class="cta">
+    <a class="btn" href="#play">▶ Play in your browser</a>
+    <a class="btn alt" href="spooky_claw3.gbc" download>⬇ Download the ROM</a>
+    <a class="btn alt" href="#flash">Put it on a cartridge</a>
+  </div>
+
+  <div class="console" id="play">
+    <div class="bezel">
+      <div class="screenbox">
+        <canvas id="screen" width="160" height="144"></canvas>
+        <div class="poster" id="poster" role="button" tabindex="0" aria-label="Start the game">
+          <span class="play">▶ PLAY</span>
+          <span class="hint">Sound on. Tap or press Enter.</span>
+        </div>
+      </div>
+    </div>
+    <div class="pad">
+      <div class="dpad">
+        <button class="u" data-k="ArrowUp" aria-label="Up">▲</button>
+        <button class="l" data-k="ArrowLeft" aria-label="Left">◀</button>
+        <button class="r" data-k="ArrowRight" aria-label="Right">▶</button>
+        <button class="d" data-k="ArrowDown" aria-label="Down">▼</button>
+      </div>
+      <div class="ab">
+        <button data-k="z" aria-label="B">B</button>
+        <button data-k="x" aria-label="A">A</button>
+      </div>
+    </div>
+    <div class="ss">
+      <button data-k="Shift">SELECT</button>
+      <button data-k="Enter">START</button>
+    </div>
+    <div class="keys">Keyboard: ← → move · X or Z drop / shoo · Enter start · Shift mute music</div>
+    <div class="err" id="err"></div>
+  </div>
+</header>
+
+<main>
+<section class="wrap">
+  <h2>How it works</h2>
+  <p class="sub">Slide the claw. Drop it on the glowing prize. Fill your five pockets before Redcap fills his five caps.</p>
+  <div class="grid two">
+    <img src="media/preview.gif" alt="Gameplay preview" style="width:100%;border:2px solid var(--line);border-radius:12px">
+    <div>
+      <p>🟢 <b>Aim for the green glow.</b> A clean grab fills a pocket. A miss and Redcap swipes one.</p>
+      <p>⭐ <b>Golden claw</b> comes around now and then: easy grab, steals one back, or takes two.</p>
+      <p>😈 <b>Redcap sneaks in.</b> Tap A fast to bonk him and earn a bonus star.</p>
+      <p>⭐⭐⭐⭐⭐ <b>Rank every level.</b> Stars = 5 − caps Redcap filled + sneaks you bonked.</p>
+      <p>💪 <b>Lose and try again.</b> Each loss makes the next try a little easier.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Four worlds. One new trick each.</h2>
+  <p class="sub">Every world has its own look, colors, and a key change in the music.</p>
+  <div class="grid worlds">
+    <article class="card"><img src="media/w1.png" alt="Pumpkin Patch"><div class="b"><h3>1 · Pumpkin Patch</h3><span class="new">NEW: scooting prizes</span><p>Learn the claw. Redcap starts nudging loot out of reach.</p></div></article>
+    <article class="card"><img src="media/w2.png" alt="Graveyard"><div class="b"><h3>2 · Graveyard</h3><span class="new">NEW: tombstones</span><p>Crack the stone first, then grab the prize. Redcap starts sneaking.</p></div></article>
+    <article class="card"><img src="media/w3.png" alt="Haunted Forest"><div class="b"><h3>3 · Haunted Forest</h3><span class="new">NEW: bats</span><p>Bats knock the claw sideways. Wait for them to pass.</p></div></article>
+    <article class="card"><img src="media/w4.png" alt="Outer Space"><div class="b"><h3>4 · Outer Space</h3><span class="new">NEW: low gravity</span><p>Floaty claw, bobbing prizes, and Space Redcap with a jetpack.</p></div></article>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The moments</h2>
+  <p class="sub">Sneaks, star screens, and a parade ending for each player.</p>
+  <div class="grid shots">
+    <img src="media/title.png" alt="Title screen">
+    <img src="media/sneak.png" alt="Redcap sneaking">
+    <img src="media/stars.png" alt="Star screen">
+    <img src="media/redcap.png" alt="Space Redcap">
+    <img src="media/lose.png" alt="Try again screen">
+    <img src="media/won.png" alt="You won">
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>By the numbers</h2>
+  <div class="stat">
+    <div><b>8</b><small>levels</small></div>
+    <div><b>4</b><small>worlds</small></div>
+    <div><b>40</b><small>stars to collect</small></div>
+    <div><b>64 KB</b><small>whole game</small></div>
+    <div><b>GBC</b><small>color only</small></div>
+  </div>
+  <p class="sub" style="text-align:center">Tested with bots on every level, so World 3 is the hump on purpose.</p>
+</section>
+
+<section class="wrap" id="flash">
+  <h2>Put it on a real cartridge</h2>
+  <p class="sub">Made for the ModRetro Chromatic with a Tetris cartridge and ChroMagician.</p>
+  <ol class="steps">
+    <li>On the handheld: <b>SYSTEM → C. MAGICIAN = ON</b>.</li>
+    <li>In ChroMagician, <b>back up the Tetris cart first</b>. Writing homebrew replaces it.</li>
+    <li><b>Write Homebrew</b> and pick <a href="spooky_claw3.gbc" download>spooky_claw3.gbc</a>. Wait for write and verify.</li>
+    <li><b>C. MAGICIAN = OFF</b>, then power-cycle.</li>
+    <li>No boot? Write <a href="spooky_claw3_nosave.gbc" download>spooky_claw3_nosave.gbc</a> instead.</li>
+  </ol>
+  <p class="note">Progress saves after every star screen when the cartridge has save memory. Hold B and press A on the title for a new game.</p>
+</section>
+
+<section class="wrap">
+  <h2>Build it yourself</h2>
+  <pre>git clone https://github.com/Ant-DeGeorge/sneaky-kryptids-spooky-claw
+cd sneaky-kryptids-spooky-claw
+make GBDK_HOME=/path/to/gbdk      # Windows: build.bat (GBDK at C:\gbdk)</pre>
+  <p class="sub">Written in C with GBDK-2020. Art is ASCII pixel grids in <code>tools/art.py</code>, music is note strings in <code>tools/gen_sound.py</code>.</p>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>A game by <b>Anthony DeGeorge</b> · <span style="color:var(--orange)">Kryptids in Space</span></div>
+    <div style="margin-top:8px">Browser play powered by <a href="https://github.com/torch2424/wasmBoy">WasmBoy</a> (GPL-3.0, see <code>vendor/</code>).</div>
+  </div>
+</footer>
+
+<script src="vendor/wasmboy.wasm.iife.js"></script>
+<script>
+(function(){
+  var poster=document.getElementById('poster'), canvas=document.getElementById('screen'), err=document.getElementById('err');
+  var started=false;
+  function fail(m){err.style.display='block';err.textContent=m;poster.style.display='flex'}
+  async function start(){
+    if(started) return; started=true;
+    poster.style.display='none';
+    try{
+      var WB=window.WasmBoy&&(window.WasmBoy.WasmBoy||window.WasmBoy);
+      await WB.config({isGbcEnabled:true,isAudioEnabled:true,headless:false,
+        frameSkip:0,audioBatchProcessing:true,graphicsBatchProcessing:false,
+        timersBatchProcessing:false,graphicsDisableScanlineRendering:false,
+        audioAccumulateSamples:true,tileRendering:true,tileCaching:true,
+        enableAudioDebugging:false,gameboyFrameRate:60,maxNumberOfAutoSaveStates:-1,isGbcColorizationEnabled:false});
+      await WB.setCanvas(canvas);
+      await WB.loadROM('spooky_claw3_nosave.gbc');
+      await WB.play();
+      window.__wb=WB;
+    }catch(e){started=false;fail('Could not start the emulator: '+(e&&e.message||e))}
+  }
+  poster.addEventListener('click',start);
+  poster.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();start()}});
+  document.addEventListener('keydown',function(e){if(!started&&e.key==='Enter'&&document.activeElement===document.body){start()}});
+
+  /* on-screen buttons feed the same keyboard events WasmBoy listens for */
+  var codes={ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39,x:88,z:90,Enter:13,Shift:16};
+  function fire(type,k){
+    var e=new KeyboardEvent(type,{key:k,code:k.length===1?'Key'+k.toUpperCase():k,bubbles:true,cancelable:true});
+    Object.defineProperty(e,'keyCode',{get:function(){return codes[k]}});
+    Object.defineProperty(e,'which',{get:function(){return codes[k]}});
+    document.dispatchEvent(e);
+  }
+  document.querySelectorAll('[data-k]').forEach(function(b){
+    var k=b.dataset.k;
+    function down(ev){ev.preventDefault();if(!started)start();fire('keydown',k)}
+    function up(ev){ev.preventDefault();fire('keyup',k)}
+    b.addEventListener('pointerdown',down);
+    b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up);
+  });
+  /* keep arrow keys from scrolling the page while playing */
+  window.addEventListener('keydown',function(e){if(started&&[37,38,39,40,32].indexOf(e.keyCode)>-1)e.preventDefault()},{passive:false});
+})();
+</script>
+</body>
+</html>
