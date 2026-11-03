@@ -1106,6 +1106,7 @@ void game_main(void) BANKED {
     enter_title();
     SHOW_BKG; SHOW_SPRITES;
     DISPLAY_ON;
+    keys = joypad();   // a button still held from skipping the studio card is not a new press
 
     while (1) {
         vsync();

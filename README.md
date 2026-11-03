@@ -51,19 +51,20 @@ Slide the claw, drop it on the glowing prize, and fill your 5 pockets before Red
 5. If it will not boot, write `spooky_claw3_nosave.gbc` instead.
 
 ## Build it
-Needs [GBDK-2020](https://github.com/gbdk-2020/gbdk-2020) 4.5.0 and Python 3 with Pillow.
+Needs [GBDK-2020](https://github.com/gbdk-2020/gbdk-2020) 4.5.0. Python 3 with Pillow is only needed if you change art or music.
 
 ```sh
 make GBDK_HOME=/path/to/gbdk     # Linux / macOS / WSL
 build.bat                        # Windows, GBDK at C:\gbdk
 ```
 
-Outputs `build/spooky_claw3.gbc` (MBC5 + battery, header `0x1B`) and `build/spooky_claw3_nosave.gbc` (plain MBC5, `0x19`). 64 KB, CGB-only.
+Outputs `build/spooky_claw3.gbc` (MBC5 + battery, header `0x1B`) and `build/spooky_claw3_nosave.gbc` (plain MBC5, `0x19`). 128 KB (the 64 KB game plus the studio card), CGB-only.
 
 | Path | What |
 |---|---|
 | `src/main.c` | The whole game (ROM bank 1). Difficulty tables at the top. |
-| `src/main0.c`, `src/loader.c` | ROM0 entry and bank-safe loaders |
+| `src/main0.c`, `src/loader.c` | ROM0 entry (plays the studio card, then the game) and bank-safe loaders |
+| `src/studio_card/` | Rejected By The Machines studio card (5.5 s, A/START skips). Needs its own STAT vector, so the game uses no `add_LCD` or `stdio`. Assets exported from `tools/studio_card/` (`node tools/studio_card/export.js src/studio_card`). |
 | `src/sound.c`, `src/sound_data.c` | Two-channel music engine plus SFX |
 | `tools/art.py`, `tools/gen_assets.py` | ASCII pixel art to tiles, maps, palettes |
 | `tools/gen_sound.py` | Songs as note strings |
@@ -81,5 +82,6 @@ World 3 is the hump on purpose: waiting for the bat to pass is the skill it teac
 
 ## Credits
 A game by **Anthony DeGeorge** · Part of the *Kryptids in Space* universe.
+Studio card by **Rejected By The Machines**.
 Browser player uses [WasmBoy](https://github.com/torch2424/wasmBoy) (GPL-3.0), vendored in `docs/vendor/`.
 Built with GBDK-2020.
