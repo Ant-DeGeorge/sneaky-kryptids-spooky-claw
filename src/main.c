@@ -1,6 +1,7 @@
 // SNEAKY KRYPTID'S SPOOKY CLAW - Redcap Trouble
-// A haunted claw-machine race for Game Boy Color: 4 worlds x 2 levels vs. Lil Redcap.
-// Built with GBDK-2020 (64 KB, MBC5, optional battery save).
+// A haunted claw-machine race for Game Boy Color: 5 worlds x 2 levels vs. Lil Redcap.
+// World 1 is HARVEST (Thanksgiving): corn stalks, a turkey flyby and a scarecrow Redcap who plants prizes back.
+// Built with GBDK-2020 (128 KB, MBC5, optional battery save).
 #include <gb/gb.h>
 #include <gb/cgb.h>
 #include <rand.h>
@@ -9,8 +10,8 @@
 #include "assets.h"
 #include "sound.h"
 #include "loader.h"
-#define BK_A 3   // bank of assets1 (common, sprites, title, rays, world 1)
-#define BK_B 2   // bank of assets2 (worlds 2-4, bats, space redcap, flag, ship)
+#define BK_A 3   // bank of assets1 (common, sprites, title, rays, worlds 1-2, harvest skin)
+#define BK_B 2   // bank of assets2 (worlds 3-5, bats, space redcap, flag, ship)
 
 // ------------------------------------------------------------------ constants
 #define ST_TITLE  0
@@ -52,7 +53,9 @@
 #define N_SLOTS   5
 #define N_IN_MACHINE 4
 #define N_PRIZES  8
-#define N_LEVELS  8
+#define N_LEVELS  10
+#define N_WORLDS  5
+#define W_NIGHT   1    // pal_bg_world index of the night-purple Pumpkin Patch (title, card rays, ending)
 #define WIN_SCORE 5
 #define RC_FLOOR_Y 96
 #define RC_TOP_Y   6
@@ -79,24 +82,29 @@ static const uint8_t slot_col[N_SLOTS] = {5, 8, 11, 14, 17};
 static const int8_t bob[8] = {0, -1, -2, -3, -3, -2, -1, 0};
 static const int8_t wob[16] = {0, 1, 2, 3, 3, 3, 2, 1, 0, -1, -2, -3, -3, -3, -2, -1};
 
-// ---- difficulty per level (0..7): world = level>>1
-static const uint8_t lv_window[N_LEVELS]  = {8, 7, 7, 6, 6, 6, 5, 5};
-static const uint8_t lv_vmax[N_LEVELS]    = {16, 16, 18, 18, 20, 20, 22, 22};
-static const uint8_t lv_accel[N_LEVELS]   = {16, 16, 5, 5, 4, 4, 3, 3};
-static const uint8_t lv_decel[N_LEVELS]   = {16, 16, 5, 5, 4, 4, 3, 2};
-static const uint8_t lv_misfreq[N_LEVELS] = {99, 4, 3, 2, 3, 2, 2, 2};
-static const uint8_t lv_sneak[N_LEVELS]   = {200, 200, 180, 150, 150, 130, 120, 100};
-static const uint8_t lv_jiggle[N_LEVELS]  = {0, 0, 0, 0, 0, 3, 4, 5};
-static const uint8_t lv_stone[N_LEVELS]   = {0, 0, 2, 4, 0, 0, 0, 0};    // refill chance /8
-static const uint8_t lv_bats[N_LEVELS]    = {0, 0, 0, 0, 1, 2, 0, 0};
-static const uint8_t lv_batspd[N_LEVELS]  = {0, 0, 0, 0, 12, 18, 0, 0};  // 1/16 px
-static const uint8_t lv_drift[N_LEVELS]   = {0, 0, 0, 0, 0, 0, 5, 7};
-static const int8_t  world_transpose[4]   = {0, -12, 5, 12};
-#define SCOOT_ON  (level >= 1)
-#define SNEAK_ON  (level >= 3)
-#define JIGGLE_ON (level >= 5)
-#define SPACE     (level >= 6)
-#define SPACE_RC  (level == 7)
+// ---- difficulty per level (0..9): world = level>>1
+//   0-1 Harvest (every trick at once: corn stalks, turkey, scarecrow planting, sneaks)
+//   2-3 Pumpkin Patch, 4-5 Graveyard, 6-7 Haunted Forest, 8-9 Outer Space
+static const uint8_t lv_window[N_LEVELS]  = {7, 6,   8, 7, 7, 6, 6, 6, 5, 5};
+static const uint8_t lv_vmax[N_LEVELS]    = {18, 20,   16, 16, 18, 18, 20, 20, 22, 22};
+static const uint8_t lv_accel[N_LEVELS]   = {5, 4,   16, 16, 5, 5, 4, 4, 3, 3};
+static const uint8_t lv_decel[N_LEVELS]   = {5, 4,   16, 16, 5, 5, 4, 4, 3, 2};
+static const uint8_t lv_misfreq[N_LEVELS] = {3, 2,   99, 4, 3, 2, 3, 2, 2, 2};
+static const uint8_t lv_sneak[N_LEVELS]   = {150, 130,   200, 200, 180, 150, 150, 130, 120, 100};
+static const uint8_t lv_jiggle[N_LEVELS]  = {0, 3,   0, 0, 0, 0, 0, 3, 4, 5};
+static const uint8_t lv_stone[N_LEVELS]   = {2, 3,   0, 0, 2, 4, 0, 0, 0, 0};    // refill chance /8 (Harvest: corn stalks)
+static const uint8_t lv_bats[N_LEVELS]    = {1, 1,   0, 0, 0, 0, 1, 2, 0, 0};    // Harvest: turkey
+static const uint8_t lv_batspd[N_LEVELS]  = {12, 16,   0, 0, 0, 0, 12, 18, 0, 0}; // 1/16 px; keep >= 12 (assist underflow)
+static const uint8_t lv_drift[N_LEVELS]   = {0, 0,   0, 0, 0, 0, 0, 0, 5, 7};
+static const uint8_t lv_plant[N_LEVELS]   = {1, 2,   0, 0, 0, 0, 0, 0, 0, 0};    // scarecrow: 1 plant, 2 plant far + grow a stalk
+static const int8_t  world_transpose[N_WORLDS] = {0, 0, -12, 5, 12};
+typedef char lv_count_guard[(sizeof(lv_plant) == N_LEVELS && sizeof(lv_window) == N_LEVELS && sizeof(lv_drift) == N_LEVELS) ? 1 : -1];
+#define HARVEST   (level < 2)                  // food skin, scarecrow Redcap, turkey, crunch, MUS_HARVEST
+#define SCOOT_ON  (level != 2)
+#define SNEAK_ON  (level < 2 || level >= 5)
+#define JIGGLE_ON (level < 2 || level >= 7)
+#define SPACE     (level >= 8)
+#define SPACE_RC  (level == 9)
 
 // ------------------------------------------------------------------ state
 static uint8_t state, frame, sub;
@@ -279,35 +287,39 @@ static void fill_slot(uint8_t s) {   // refill with a prize, maybe under a tombs
 // ------------------------------------------------------------------ save (battery RAM, optional)
 #define SAVE_MAGIC0 'S'
 #define SAVE_MAGIC1 'K'
-#define SAVE_VER    3
+#define SAVE_VER   4
+#define SV_STARS   4
+#define SV_BITS    (SV_STARS + N_LEVELS)   // 14
+#define SV_SUM     (SV_BITS + 1)           // 15
+#define V3_LEVELS  8                       // ver 3 = the 4 spooky worlds only (now levels 2..9)
 static uint8_t *const sram = (uint8_t *)0xA000;
 
-static uint8_t save_sum(void) {
-    uint8_t i, s = 0;
-    for (i = 3; i < 13; i++) s += sram[i];
-    return (uint8_t)(s ^ 0x5A);
-}
+static uint8_t save_sum(uint8_t end) { uint8_t i, s = 0; for (i = 3; i < end; i++) s += sram[i]; return (uint8_t)(s ^ 0x5A); }
 static void save_write(void) {
     uint8_t i;
     ENABLE_RAM; SWITCH_RAM(0);
     sram[0] = SAVE_MAGIC0; sram[1] = SAVE_MAGIC1; sram[2] = SAVE_VER; sram[3] = level;
-    for (i = 0; i < N_LEVELS; i++) sram[4 + i] = level_stars[i];
-    sram[12] = 0;
-    for (i = 0; i < N_PRIZES; i++) if (collected[i]) sram[12] |= (1 << i);
-    sram[13] = save_sum();
+    for (i = 0; i < N_LEVELS; i++) sram[SV_STARS + i] = level_stars[i];
+    sram[SV_BITS] = 0;
+    for (i = 0; i < N_PRIZES; i++) if (collected[i]) sram[SV_BITS] |= (1 << i);
+    sram[SV_SUM] = save_sum(SV_SUM);
     DISABLE_RAM;
 }
 static uint8_t save_load(void) {
-    uint8_t i, ok;
+    uint8_t i, n = 0, off = 0, bits = 0;
     ENABLE_RAM; SWITCH_RAM(0);
-    ok = (sram[0] == SAVE_MAGIC0 && sram[1] == SAVE_MAGIC1 && sram[2] == SAVE_VER && sram[13] == save_sum() && sram[3] < N_LEVELS);
-    if (ok) {
-        level = sram[3];
-        for (i = 0; i < N_LEVELS; i++) level_stars[i] = sram[4 + i] > 5 ? 5 : sram[4 + i];
-        for (i = 0; i < N_PRIZES; i++) collected[i] = (sram[12] >> i) & 1;
+    if (sram[0] == SAVE_MAGIC0 && sram[1] == SAVE_MAGIC1) {
+        if (sram[2] == SAVE_VER && sram[SV_SUM] == save_sum(SV_SUM) && sram[3] < N_LEVELS) {
+            n = N_LEVELS; bits = sram[SV_BITS]; level = sram[3];
+        } else if (sram[2] == 3 && sram[13] == save_sum(13) && sram[3] < V3_LEVELS) {
+            // old save: keep its stars (they move up 2 levels) and start at the new Harvest world
+            n = V3_LEVELS; off = 2; bits = sram[12]; level = 0;
+        }
     }
+    for (i = 0; i < n; i++) level_stars[i + off] = sram[SV_STARS + i] > 5 ? 5 : sram[SV_STARS + i];
+    if (n) for (i = 0; i < N_PRIZES; i++) collected[i] = (bits >> i) & 1;
     DISABLE_RAM;
-    return ok;
+    return n != 0;
 }
 static void save_clear(void) {
     ENABLE_RAM; SWITCH_RAM(0); sram[0] = 0; sram[1] = 0; DISABLE_RAM;
@@ -361,29 +373,50 @@ static void load_common(void) {
     set_sprite_palette(0, 8, pal_obj);
     claw_pal_cur = 0xFF;
 }
+static const palette_color_t *rays_p;
 static void load_rays_bg(void) {
-    uint8_t i;
+    uint8_t i, hv = HARVEST && state != ST_FINAL;
     move_bkg(0, 0);
     ld_bkg_data(BK_A, SCREEN_BASE, N_REVEAL_TILES, reveal_tiles);
     ld_screen(BK_A, reveal_map, reveal_attr);
-    set_bkg_palette(0, 8, pal_bg_world[0]);
-    set_bkg_palette(0, 1, pal_rays);
-    set_bkg_palette(1, 1, pal_text);
-    set_bkg_palette(2, 1, pal_star_dim);
+    set_bkg_palette(0, 8, pal_bg_world[hv ? 0 : W_NIGHT]);
+    rays_p = hv ? pal_rays_hv : pal_rays;
+    set_bkg_palette(0, 1, rays_p);
+    set_bkg_palette(1, 1, hv ? pal_rays_hv + 4 : pal_text);
+    set_bkg_palette(2, 1, hv ? pal_rays_hv + 8 : pal_star_dim);
     for (i = 0; i < 6; i++) spark_respawn(i);
 }
 static void cycle_rays(void) {
     if ((frame & 7) == 0) {
         uint8_t k = (frame >> 3) % 3;
         if (state == ST_LOSE) k = (frame >> 4) % 3;
-        pal_work[0] = pal_rays[0];
-        pal_work[1] = pal_rays[1 + k];
-        pal_work[2] = pal_rays[1 + (k + 1) % 3];
-        pal_work[3] = pal_rays[1 + (k + 2) % 3];
+        pal_work[0] = rays_p[0];
+        pal_work[1] = rays_p[1 + k];
+        pal_work[2] = rays_p[1 + (k + 1) % 3];
+        pal_work[3] = rays_p[1 + (k + 2) % 3];
         set_bkg_palette(0, 1, pal_work);
     }
 }
 static void load_normal_rc_tiles(void) { ld_spr_data(BK_A, SPR_RC, 48, sprite_tiles + (SPR_RC << 4)); }
+// Harvest skin: food prizes, corn stalk (over the tombstone tiles) and 2 OBJ palettes. Call only while DISPLAY_OFF.
+static uint8_t skin_on;                       // 0 = monsters (load_common default)
+static void harvest_skin(uint8_t on) {
+    if (on == skin_on) return;
+    skin_on = on;
+    if (on) {
+        ld_bkg_data(BK_A, PRIZE_BG_BASE, 32, food_bg_tiles);
+        ld_bkg_data(BK_A, TOMB_T, 4, stalk_tiles);
+        ld_spr_data(BK_A, SPR_PRIZE, 32, food_spr_tiles);
+        set_sprite_palette(3, 1, pal_obj_hv);       // cream (prizes 0/4, poof; Redcap eye shine stays white)
+        set_sprite_palette(6, 1, pal_obj_hv + 4);   // cranberry (prize 2, turkey)
+    } else {
+        ld_bkg_data(BK_A, PRIZE_BG_BASE, 32, common_tiles + (PRIZE_BG_BASE << 4));
+        ld_bkg_data(BK_A, TOMB_T, 4, common_tiles + (TOMB_T << 4));
+        ld_spr_data(BK_A, SPR_PRIZE, 32, sprite_tiles + (SPR_PRIZE << 4));
+        set_sprite_palette(0, 8, pal_obj); claw_pal_cur = 0xFF;
+    }
+}
+static uint8_t world_song(void) { return HARVEST ? MUS_HARVEST : MUS_THEME; }
 
 // ------------------------------------------------------------------ title
 static void enter_title(void) {
@@ -391,10 +424,11 @@ static void enter_title(void) {
     DISPLAY_OFF;
     hide_all();
     state = ST_TITLE; scr_timer = 0;
+    harvest_skin(0);                        // title row always shows the 8 monsters
     load_normal_rc_tiles();
     ld_bkg_data(BK_A, SCREEN_BASE, N_TITLE_TILES, title_tiles);
     ld_screen(BK_A, title_map, title_attr);
-    set_bkg_palette(0, 8, pal_bg_world[0]);
+    set_bkg_palette(0, 8, pal_bg_world[W_NIGHT]);
     set_bkg_palette(1, 1, pal_text);
     draw_text_center(0, "SNEAKY KRYPTID'S", 1);
     draw_text_center(8, "REDCAP TROUBLE", 1);
@@ -433,7 +467,8 @@ static void place_held(uint8_t x, uint8_t y, uint8_t behind) {
 }
 static void update_tempo(void) {
     uint8_t m = pscore > rscore ? pscore : rscore;
-    music_tempo(m >= 4 ? 5 : (m >= 3 ? 6 : 8));
+    uint8_t b = (level == 0) ? 9 : 8;      // Harvest W1-1 strolls; every other level 8/6/5
+    music_tempo(m >= 4 ? b - 3 : (m >= 3 ? b - 2 : b));
 }
 static void bats_init(void) {
     uint8_t i;
@@ -459,7 +494,7 @@ static void update_bats(void) {
             knocked = 1; target_slot = -1; shake_t = 6;
             if (bat_dir[i]) { clawX = (clawX + 8 > CLAW_MAXX) ? CLAW_MAXX : clawX + 8; }
             else            { clawX = (clawX < CLAW_MINX + 8) ? CLAW_MINX : clawX - 8; }
-            sfx_play(SFX_SQUEAK);
+            sfx_play(HARVEST ? SFX_GOBBLE : SFX_SQUEAK);
         }
     }
 }
@@ -489,15 +524,22 @@ static void enter_play(void) {
     DISPLAY_OFF;
     hide_all();
     state = ST_PLAY;
+    harvest_skin(HARVEST);
     ld_spr_data(BK_A, 0, 40, sprite_tiles);
     load_normal_rc_tiles();
+    if (HARVEST) {                          // scarecrow Redcap (BONK / POUT stay normal: the disguise falls off)
+        ld_spr_data(BK_A, SPR_RC + (RC_IDLE << 3),   8, scare_rc_tiles);
+        ld_spr_data(BK_A, SPR_RC + (RC_WALK << 3),   8, scare_rc_tiles);
+        ld_spr_data(BK_A, SPR_RC + (RC_SNEAK << 3),  8, scare_rc_tiles);
+        ld_spr_data(BK_A, SPR_RC + (RC_GIGGLE << 3), 8, scare_rc_tiles + 128);
+    }
     if (SPACE_RC) {
         ld_spr_data(BK_B, SPR_RC + (RC_IDLE << 3), 8, space_rc_tiles);
         ld_spr_data(BK_B, SPR_RC + (RC_WALK << 3), 8, space_rc_tiles);
         ld_spr_data(BK_B, SPR_RC + (RC_SNEAK << 3), 8, space_rc_tiles);
         ld_spr_data(BK_B, SPR_RC + (RC_GIGGLE << 3), 8, space_rc_tiles + 128);
     }
-    if (lv_bats[level]) ld_spr_data(BK_B, SPR_SWAP, 8, bat_tiles);
+    if (lv_bats[level]) { if (HARVEST) ld_spr_data(BK_A, SPR_SWAP, 8, turkey_tiles); else ld_spr_data(BK_B, SPR_SWAP, 8, bat_tiles); }
     ld_bkg_data(world_bank[wd], SCREEN_BASE, world_ntiles[wd], world_tiles[wd]);
     ld_screen(world_bank[wd], world_map[wd], world_attr[wd]);
     set_bkg_palette(0, 8, pal_bg_world[wd]);
@@ -512,7 +554,7 @@ static void enter_play(void) {
     draw_text_center(8, "READY?", 1);
     DISPLAY_ON;
     music_transpose(world_transpose[wd]);
-    if (!music_muted) { music_play(MUS_THEME); update_tempo(); } else music_stop();
+    if (!music_muted) { music_play(world_song()); update_tempo(); } else music_stop();
 }
 
 static void enter_lose(void);
@@ -609,11 +651,20 @@ static void begin_sneak(void) {
     rc_fx = (uint16_t)rc_x << 8; rc_t = 0;
     pstate = P_SNEAK; sfx_play(SFX_ALARM);
 }
+static int8_t far_empty(int8_t avoid) {            // empty slot farthest from the claw
+    uint8_t i, d, best = 0; int8_t r = -1;
+    for (i = 0; i < N_SLOTS; i++) {
+        if ((int8_t)i == avoid || slot_type[i] != EMPTY) continue;
+        d = abs_diff(clawX, slot_cx(i));
+        if (r < 0 || d > best) { best = d; r = i; }
+    }
+    return r;
+}
 static void begin_scoot(int8_t from) {
     int8_t to;
     mis_pending = M_NONE;
     if (from < 0) from = random_slot(0, -1);
-    to = random_slot(1, from);
+    to = (lv_plant[level] >= 2) ? far_empty(from) : random_slot(1, from);
     if (from < 0 || to < 0) { end_turn(0); return; }
     rc_slot = (uint8_t)from; rc_dest = (uint8_t)to;
     rc_enter_floor(slot_cx(rc_slot) - 8);
@@ -663,7 +714,7 @@ static void update_play(void) {
                 if (slot_stone[grabbed_slot]) {
                     slot_stone[grabbed_slot] = 0; broke_stone = 1;
                     draw_slot(grabbed_slot);
-                    sfx_play(SFX_CRACK); shake_t = 8;
+                    sfx_play(HARVEST ? SFX_CRUNCH : SFX_CRACK); shake_t = 8;
                     poof_slot = grabbed_slot; poof_t = 0;
                 } else {
                     held_type = slot_type[grabbed_slot];
@@ -760,7 +811,7 @@ static void update_play(void) {
         meta16(O_FLY, SPR_PRIZE + (fly_type << 2), (uint8_t)x, (uint8_t)y, prize_pal[fly_type]);
         if (fly_t >= 32) {
             hide16(O_FLY);
-            sack_type[pscore] = fly_type; collected[fly_type] = 1;
+            sack_type[pscore] = fly_type; if (!HARVEST) collected[fly_type] = 1;   // food doesn't light the title monsters
             pscore++;
             draw_sack();
             spark_at(0, sack_x(pscore - 1) - 2, 2); spark_at(1, sack_x(pscore - 1) + 10, 8);
@@ -816,12 +867,20 @@ static void update_play(void) {
             rc_y = RC_FLOOR_Y - (((frame >> 2) & 1) ? 3 : 0);
             if (rc_run_to(2)) {
                 rc_y = RC_FLOOR_Y;
-                slot_type[rc_dest] = rc_hat; rc_hat = EMPTY; draw_slot(rc_dest);
+                slot_type[rc_dest] = rc_hat; rc_hat = EMPTY;
                 sfx_play(SFX_GIGGLE);
+                if (lv_plant[level] >= 2 && count_stones() < 2) {   // the scarecrow grows a corn stalk over it
+                    slot_stone[rc_dest] = 1; poof_slot = rc_dest; poof_t = 0; sfx_play(SFX_POOF);
+                }
+                draw_slot(rc_dest);
                 rc_phase = 3; rc_t = 0;
             }
         } else if (rc_phase == 3) {
             rc_frame = RC_GIGGLE;
+            if (poof_slot >= 0) {
+                meta16(O_FLY, (rc_t < 12) ? SPR_POOF_A : SPR_POOF_B, slot_cx(poof_slot) - 8, SLOT_ROW << 3, 3);
+                if (rc_t >= 22) { hide16(O_FLY); poof_slot = -1; }
+            }
             if (++rc_t == 30) { rc_phase = 4; rc_target = 168; }
         } else if (rc_run_to(3)) end_turn(0);
         break;
@@ -899,31 +958,36 @@ static void enter_card(void) {
     DISPLAY_OFF;
     hide_all();
     state = ST_CARD; scr_timer = 0;
+    harvest_skin(wd == 0);
     load_rays_bg();
     ld_spr_data(BK_A, 0, 40, sprite_tiles); load_normal_rc_tiles();
-    if (wd == 2) ld_spr_data(BK_B, SPR_SWAP, 8, bat_tiles);
+    if (wd == 0) ld_spr_data(BK_A, SPR_SWAP, 8, turkey_tiles);
+    if (wd == 3) ld_spr_data(BK_B, SPR_SWAP, 8, bat_tiles);
     wt[6] = '1' + wd;
     draw_text_center(1, wt, 1);
     draw_text_center(3, world_names[wd], 1);
-    if (wd == 0) draw_text_center(16, "GRAB 5 PRIZES!", 1);
-    if (wd == 1) { draw_2x2(9, 9, TOMB_T, 3); draw_text_center(16, "BREAK THE STONE!", 1); }
-    if (wd == 2) draw_text_center(16, "WATCH THE BATS!", 1);
-    if (wd == 3) draw_text_center(16, "LOW GRAVITY!", 1);
+    if (wd == 0) { draw_2x2(9, 9, TOMB_T, 3); draw_text_center(16, "PICK THE CORN!", 1); }
+    if (wd == 1) draw_text_center(16, "GRAB 5 PRIZES!", 1);
+    if (wd == 2) { draw_2x2(9, 9, TOMB_T, 3); draw_text_center(16, "BREAK THE STONE!", 1); }
+    if (wd == 3) draw_text_center(16, "WATCH THE BATS!", 1);
+    if (wd == 4) draw_text_center(16, "LOW GRAVITY!", 1);
     bats_init(); bat_y[0] = 60; bat_y[1] = 84;
     DISPLAY_ON;
     music_transpose(world_transpose[wd]);
-    if (!music_muted) music_play(MUS_THEME);
+    if (!music_muted) music_play(world_song());
+    if (wd == 0) sfx_play(SFX_HORN);
 }
 static void update_card(void) {
     uint8_t wd = world(), i;
     if (scr_timer < 255) scr_timer++;
-    if (wd == 0) {
+    if (wd == 1) {
         meta16(0, SPR_CLAW_OPEN, 72, 48 + bob[(frame >> 3) & 7], 1);
         draw_prize_spr(2, 1, 72, 80);
-    } else if (wd == 1) {
-        meta16(0, (scr_timer & 32) ? SPR_CLAW_CLOSED : SPR_CLAW_OPEN, 72, 56 + ((scr_timer & 32) ? 4 : 0), 0);
-    } else if (wd == 2) {
-        for (i = 0; i < 2; i++) {
+    } else if (wd == 2 || wd == 0) {
+        meta16(4, (scr_timer & 32) ? SPR_CLAW_CLOSED : SPR_CLAW_OPEN, 72, 56 + ((scr_timer & 32) ? 4 : 0), 0);
+    }
+    if (wd == 3 || wd == 0) {                // bats, or one strutting turkey
+        for (i = 0; i < (wd ? 2 : 1); i++) {
             uint8_t x, y, t = SPR_SWAP + (((frame >> 3) & 1) ? 4 : 0);
             if (bat_dir[i]) { bat_fx[i] += 24; if ((bat_fx[i] >> 4) >= 132) bat_dir[i] = 0; }
             else            { bat_fx[i] -= 24; if ((bat_fx[i] >> 4) <= 22)  bat_dir[i] = 1; }
@@ -931,7 +995,7 @@ static void update_card(void) {
             if (bat_dir[i]) { spr16(i << 1, t + 2, x, y, 6 | S_FLIPX); spr16((i << 1) + 1, t, x + 8, y, 6 | S_FLIPX); }
             else            { spr16(i << 1, t, x, y, 6); spr16((i << 1) + 1, t + 2, x + 8, y, 6); }
         }
-    } else {
+    } else if (wd == 4) {
         draw_prize_spr(0, 0, 56, 72 + bob[(frame >> 3) & 7] * 2);
         draw_prize_spr(2, 2, 88, 64 + bob[((frame >> 3) + 4) & 7] * 2);
         meta16(4, SPR_CLAW_OPEN, 72, 40 + wob[(frame >> 3) & 15] / 2, 0);
@@ -975,7 +1039,7 @@ static void update_lose(void) {
 
 // ------------------------------------------------------------------ star ranking
 static void draw_total(uint8_t row) {
-    static char tt[] = "TOTAL 00/40";
+    static char tt[] = "TOTAL 00/50";
     uint8_t t = total_stars();
     tt[6] = '0' + t / 10; tt[7] = '0' + t % 10;
     draw_text_center(row, tt, 1);
@@ -998,7 +1062,7 @@ static void enter_stars(void) {
     draw_text_center(1, ct, 1);
     for (i = 0; i < 5; i++) draw_2x2(1 + (i << 2), 7, BIGSTAR_T, 2);
     draw_total(16);
-    // save progress: next level unlocked (or stay on 7 until the ending plays)
+    // save progress: next level unlocked (or stay on the last level until the ending plays)
     {
         uint8_t keep = level;
         if (level < N_LEVELS - 1) level++;
@@ -1031,6 +1095,7 @@ static int16_t ship_x; static uint8_t ship_y;
 static void enter_final_sub(void) {
     DISPLAY_OFF;
     hide_all();
+    harvest_skin(0);                        // the parade is the 8 monsters
     scr_timer = 0;
     load_rays_bg();
     ld_spr_data(BK_A, 0, 40, sprite_tiles); load_normal_rc_tiles();
@@ -1117,7 +1182,7 @@ void game_main(void) BANKED {
         if (pressed & J_SELECT) {
             music_muted ^= 1;
             if (music_muted) music_stop();
-            else if (state == ST_PLAY) { music_play(MUS_THEME); update_tempo(); }
+            else if (state == ST_PLAY) { music_play(world_song()); update_tempo(); }
             else if (state == ST_TITLE) music_play(MUS_TITLE);
         }
         switch (state) {

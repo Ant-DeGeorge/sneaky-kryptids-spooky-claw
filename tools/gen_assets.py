@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Asset generator for Sneaky Kryptid's Spooky Claw (GBC, 64 KB banked).
-Emits src/assets.h, src/assets1.c (bank 1), src/assets2.c (bank 2)."""
+"""Asset generator for Sneaky Kryptid's Spooky Claw (GBC, 128 KB banked).
+Emits src/assets.h, src/assets0.c (ROM0), src/assets1.c (bank 3), src/assets2.c (bank 2).
+World index 0 = Harvest (W1); 1-4 = Pumpkin Patch, Graveyard, Haunted Forest, Outer Space (W2-W5)."""
 import math, os, random, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from art import *   # noqa: shared pixel art + helpers
@@ -151,6 +152,13 @@ SHIP = parse([
 def hexrgb(h): h = h.lstrip('#'); return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
 
 WORLDS = [
+ dict(name="HARVEST", night='#5C2E1F',             # Thanksgiving world (index 0 = W1)
+      interior=['#3A1A10', '#8A4A22', '#E0A060'], bulbs=['#F07818', '#F8D038', '#FFF4D0'],
+      prize_cols=[['#FFFFFF', '#E8C898', '#2A1408'],   # 3 cream: wishbone, pie, corn stalk, poof
+                  ['#F07818', '#F8D038', '#402010'],   # 4 orange: pumpkin
+                  ['#E8C898', '#9A5A2A', '#2A1408'],   # 5 brown: turkey leg, cornucopia
+                  ['#C83040', '#F8C838', '#3A1A0C'],   # 6 cranberry: cranberry sauce, turkey
+                  ['#78D848', '#F8D038', '#101018']]), # 7 green: squash, corn cob
  dict(name="PUMPKIN PATCH", night='#3A1F5C',
       interior=['#24103C', '#6A3F9C', '#C8B0F0'], bulbs=['#F07818', '#F8D038', '#FFFFFF']),
  dict(name="GRAVEYARD", night='#1A2038',
@@ -170,7 +178,7 @@ PRIZE_COLS = [   # palettes 3..7 colours 1-3 (colour 0 = world night)
 REDCAP_COLS = ['#D83030', '#F0B890', '#2A0E14']
 def world_bg_pals(w):
     n = w['night']
-    return [[n] + w['interior'], ['#140818'] + w['bulbs'], [n] + REDCAP_COLS] + [[n] + p for p in PRIZE_COLS]
+    return [[n] + w['interior'], ['#140818'] + w['bulbs'], [n] + REDCAP_COLS] + [[n] + p for p in w.get('prize_cols', PRIZE_COLS)]
 
 TEXT_PAL = ['#3A1F5C', '#F07818', '#F8D038', '#FFFFFF']
 RAYS_PAL = ['#3A1F5C', '#2C1548', '#4A2878', '#64389A']
@@ -180,6 +188,11 @@ OBJ_PALS = [
     ['#000000', '#F8D038', '#F07818', '#FFFFFF'],  # 1 fx
     ['#000000', '#D83030', '#F0B890', '#2A0E14'],  # 2 redcap
 ] + [['#000000'] + p for p in PRIZE_COLS]           # 3..7 prizes (3 = white: poof, eye shine, bats? no)
+# Harvest OBJ palettes 3 + 6 (swapped in at runtime) and warm rays for its card / stars / lose screens
+OBJ_PALS_HV = [['#000000', '#FFFFFF', '#E8C898', '#2A1408'], ['#000000', '#C83040', '#F8C838', '#3A1A0C']]
+RAYS_HV = [['#5C2E1F', '#4E2618', '#6A3622', '#84462A'],     # rays
+           ['#5C2E1F', '#F07818', '#F8D038', '#FFFFFF'],     # text
+           ['#5C2E1F', '#4A2216', '#62321F', '#7A4428']]     # star_dim
 BAT_PAL = ['#000000', '#B888F0', '#FFFFFF', '#101018']   # bats use palette 6 (violet) - same as bat prize
 CLAW_PALS = [
     ['#000000', '#E0E0F0', '#8088A8', '#101018'],
@@ -275,7 +288,7 @@ def stars_on(scr, coords):
 
 # --- world 1: pumpkin patch
 def world1():
-    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[0], pile_img(120, 7), 4)
+    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[1], pile_img(120, 7), 4)
     stars_on(scr, ((4, 5, STAR1), (8, 4, STAR2), (11, 6, STAR3), (6, 8, STAR3), (16, 9, STAR2), (2, 7, STAR2),
                    (9, 9, STAR1), (17, 7, STAR3), (3, 10, STAR3), (12, 10, STAR2), (14, 4, STAR3), (10, 7, STAR2)))
     scr.put_img(12, 5, MOON, 3, 3, 0)
@@ -303,7 +316,7 @@ def tomb_bg(h, w=16, cross=True):
     return img
 
 def world2():
-    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[1], pile_img(120, 11, cols=(2, 3, 2), base=1, rnd_r=(1.4, 2.2)))
+    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[2], pile_img(120, 11, cols=(2, 3, 2), base=1, rnd_r=(1.4, 2.2)))
     stars_on(scr, ((5, 4, STAR3), (9, 5, STAR2), (15, 4, STAR3), (3, 8, STAR2), (17, 10, STAR3), (8, 9, STAR3)))
     # cloudy moon
     scr.put_img(12, 5, MOON, 3, 3, 0)
@@ -333,7 +346,7 @@ def world2():
 
 # --- world 3: haunted forest
 def world3():
-    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[2], pile_img(120, 23, cols=(2, 3, 3), base=1, rnd_r=(1.8, 2.8), n=50))
+    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[3], pile_img(120, 23, cols=(2, 3, 3), base=1, rnd_r=(1.8, 2.8), n=50))
     stars_on(scr, ((8, 4, STAR3), (12, 4, STAR2), (10, 6, STAR3)))
     # two big trunks with branches
     def trunk(mirror):
@@ -364,7 +377,7 @@ def world3():
 
 # --- world 4: outer space
 def world4():
-    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[3], rocks_img(120, 31))
+    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[4], rocks_img(120, 31))
     stars_on(scr, ((3, 4, STAR1), (6, 6, STAR3), (9, 4, STAR2), (14, 5, STAR3), (2, 9, STAR2), (7, 10, STAR3),
                    (11, 8, STAR1), (16, 11, STAR3), (4, 12, STAR3), (12, 12, STAR2), (9, 13, STAR3), (17, 8, STAR2)))
     # ringed planet, right
@@ -382,8 +395,35 @@ def world4():
     scr.put_img(2, 6, ship, 4, 2, 0)
     return ts, scr
 
+# --- harvest (Thanksgiving, W1): corn field, harvest moon, empty scarecrow post, hay bales
+def corn_row_img(w=144, h=24):
+    """Back-row corn field, period 16 px so it dedupes to a few tiles."""
+    img = blank(w, h)
+    for x0 in range(0, w, 16):
+        for sx in (x0 + 3, x0 + 11):
+            top = 4 if (sx % 16) == 3 else 7
+            for y in range(top, h): img[y][sx] = 1
+            img[top - 1][sx] = 3; img[top - 2][sx] = 3            # tassel
+            for (y0, d) in ((top + 4, 1), (top + 8, -1), (top + 12, 1)):
+                for i in range(4):
+                    xx = sx + d * (i + 1); yy = y0 - (i // 2)
+                    if 0 <= xx < w and 0 <= yy < h: img[yy][xx] = 2
+    for y in range(h - 3, h):
+        for x in range(w): img[y][x] = 1
+    return img
+
+def world_harvest():
+    ts = TileSet(SCREEN_BASE); scr = frame_screen(ts, WORLDS[0], pile_img(120, 41, cols=(1, 2, 1), base=3), 5)  # straw floor
+    stars_on(scr, ((4, 4, STAR2), (9, 5, STAR3), (15, 4, STAR1)))
+    scr.put_img(11, 4, MOON, 3, 3, 0)                     # big harvest moon
+    scr.put_img(1, 8, corn_row_img(), 18, 3, 0)            # corn field, rows 8-10
+    scr.put_img(16, 7, parse(SCARE_POST, 16), 2, 4, 0)     # empty scarecrow post (Redcap is wearing the clothes)
+    hay = parse(HAY_BALE, 16)
+    scr.put_img(5, 12, hay, 2, 2, 0); scr.put_img(13, 12, hay, 2, 2, 0)
+    return ts, scr
+
 worlds_out = []
-for fn in (world1, world2, world3, world4):
+for fn in (world_harvest, world1, world2, world3, world4):
     ts, scr = fn()
     assert SCREEN_BASE + len(ts.tiles) <= 256, (fn.__name__, len(ts.tiles))
     worlds_out.append((ts, scr))
@@ -480,14 +520,22 @@ b1.append(c_bytes("common_tiles", common))
 b1.append(c_bytes("sprite_tiles", spr))
 b1.append(c_bytes("title_tiles", ts_title.tiles)); b1.append(c_u8("title_map", title.map)); b1.append(c_u8("title_attr", title.attr))
 b1.append(c_bytes("reveal_tiles", ts_rev.tiles)); b1.append(c_u8("reveal_map", rev.map)); b1.append(c_u8("reveal_attr", rev.attr))
-ts, scr = worlds_out[0]
-b1.append(c_bytes("w1_tiles", ts.tiles)); b1.append(c_u8("w1_map", scr.map)); b1.append(c_u8("w1_attr", scr.attr))
+for i in (0, 1):
+    ts, scr = worlds_out[i]
+    b1.append(c_bytes(f"w{i}_tiles", ts.tiles)); b1.append(c_u8(f"w{i}_map", scr.map)); b1.append(c_u8(f"w{i}_attr", scr.attr))
+# Harvest skin (swapped into VRAM in place of the monsters / tombstone while W1 is loaded)
+food_bg = []; food_spr = []
+for img in FOOD_IMGS: food_bg += meta16_bg(img); food_spr += meta16s(img)
+b1.append(c_bytes("food_bg_tiles", food_bg)); b1.append(c_bytes("food_spr_tiles", food_spr))
+b1.append(c_bytes("stalk_tiles", meta16_bg(parse(CORN_STALK, 16))))
+b1.append(c_bytes("turkey_tiles", meta16s(parse(TURKEY_A, 16)) + meta16s(parse(TURKEY_B, 16))))
+b1.append(c_bytes("scare_rc_tiles", rc_pack(RC_SCARE_A) + rc_pack(RC_SCARE_B)))
 b1.append(c_bytes("big_rc_tiles", big_rc))
 
 b2 = ["// AUTO-GENERATED by tools/gen_assets.py - do not edit", "#pragma bank 2", '#include "assets.h"', ""]
-for i in (1, 2, 3):
+for i in (2, 3, 4):
     ts, scr = worlds_out[i]
-    b2.append(c_bytes(f"w{i+1}_tiles", ts.tiles)); b2.append(c_u8(f"w{i+1}_map", scr.map)); b2.append(c_u8(f"w{i+1}_attr", scr.attr))
+    b2.append(c_bytes(f"w{i}_tiles", ts.tiles)); b2.append(c_u8(f"w{i}_map", scr.map)); b2.append(c_u8(f"w{i}_attr", scr.attr))
 b2.append(c_bytes("space_rc_tiles", space_tiles))
 b2.append(c_bytes("bat_tiles", bat_tiles))
 b2.append(c_bytes("flag_tiles", flag_tiles))
@@ -495,19 +543,19 @@ b2.append(c_bytes("ship_tiles", ship_tiles))
 
 # palettes + small tables live in ROM0 (assets0.c) so they are always reachable
 b0 = ["// AUTO-GENERATED by tools/gen_assets.py - do not edit", '#include "assets.h"', ""]
-for i, w in enumerate(WORLDS): b0.append(c_pal(f"pal_bg_w{i+1}", world_bg_pals(w)))
-b0.append("const palette_color_t * const pal_bg_world[4] = {pal_bg_w1, pal_bg_w2, pal_bg_w3, pal_bg_w4};")
+for i, w in enumerate(WORLDS): b0.append(c_pal(f"pal_bg_w{i}", world_bg_pals(w)))
+b0.append("const palette_color_t * const pal_bg_world[5] = {pal_bg_w0, pal_bg_w1, pal_bg_w2, pal_bg_w3, pal_bg_w4};")
 b0.append(c_pal("pal_text", [TEXT_PAL])); b0.append(c_pal("pal_rays", [RAYS_PAL])); b0.append(c_pal("pal_star_dim", [STAR_DIM_PAL]))
-b0.append(c_pal("pal_obj", OBJ_PALS)); b0.append(c_pal("pal_claw", CLAW_PALS))
+b0.append(c_pal("pal_obj", OBJ_PALS)); b0.append(c_pal("pal_obj_hv", OBJ_PALS_HV)); b0.append(c_pal("pal_rays_hv", RAYS_HV)); b0.append(c_pal("pal_claw", CLAW_PALS))
 b0.append("const uint8_t prize_pal[8] = {" + ",".join(map(str, PRIZE_PAL)) + "};")
 b0.append("const char * const prize_names[8] = {" + ",".join(f'"{n}"' for n in PRIZE_NAMES) + "};")
-b0.append("const char * const world_names[4] = {" + ",".join(f'"{w["name"]}"' for w in WORLDS) + "};")
+b0.append("const char * const world_names[5] = {" + ",".join(f'"{w["name"]}"' for w in WORLDS) + "};")
 b0.append(f'const char font_order[] = "{FONT_ORDER}";')
-b0.append("const uint8_t * const world_tiles[4] = {w1_tiles, w2_tiles, w3_tiles, w4_tiles};")
-b0.append("const uint8_t * const world_map[4] = {w1_map, w2_map, w3_map, w4_map};")
-b0.append("const uint8_t * const world_attr[4] = {w1_attr, w2_attr, w3_attr, w4_attr};")
-b0.append("const uint8_t world_ntiles[4] = {" + ",".join(str(len(ts.tiles)) for ts, _ in worlds_out) + "};")
-b0.append("const uint8_t world_bank[4] = {3, 2, 2, 2};")
+b0.append("const uint8_t * const world_tiles[5] = {w0_tiles, w1_tiles, w2_tiles, w3_tiles, w4_tiles};")
+b0.append("const uint8_t * const world_map[5] = {w0_map, w1_map, w2_map, w3_map, w4_map};")
+b0.append("const uint8_t * const world_attr[5] = {w0_attr, w1_attr, w2_attr, w3_attr, w4_attr};")
+b0.append("const uint8_t world_ntiles[5] = {" + ",".join(str(len(ts.tiles)) for ts, _ in worlds_out) + "};")
+b0.append("const uint8_t world_bank[5] = {3, 3, 2, 2, 2};")
 
 h = ["// AUTO-GENERATED by tools/gen_assets.py - do not edit", "#ifndef ASSETS_H", "#define ASSETS_H",
      "#include <gb/gb.h>", "#include <gb/cgb.h>", "#include <stdint.h>", "",
@@ -518,13 +566,14 @@ h = ["// AUTO-GENERATED by tools/gen_assets.py - do not edit", "#ifndef ASSETS_H
      "#define RC_IDLE 0", "#define RC_WALK 1", "#define RC_GIGGLE 2", "#define RC_SNEAK 3", "#define RC_BONK 4", "#define RC_POUT 5", ""]
 for k, v in SPR.items(): h.append(f"#define SPR_{k} {v}")
 h += ["", "extern const uint8_t common_tiles[], sprite_tiles[], title_tiles[], title_map[], title_attr[], reveal_tiles[], reveal_map[], reveal_attr[];",
-      "extern const uint8_t w1_tiles[], w1_map[], w1_attr[], w2_tiles[], w2_map[], w2_attr[], w3_tiles[], w3_map[], w3_attr[], w4_tiles[], w4_map[], w4_attr[];",
+      "extern const uint8_t w0_tiles[], w0_map[], w0_attr[], w1_tiles[], w1_map[], w1_attr[], w2_tiles[], w2_map[], w2_attr[], w3_tiles[], w3_map[], w3_attr[], w4_tiles[], w4_map[], w4_attr[];",
       "extern const uint8_t big_rc_tiles[], space_rc_tiles[], bat_tiles[], flag_tiles[], ship_tiles[];",
-      "extern const palette_color_t * const pal_bg_world[4];",
-      "extern const palette_color_t pal_text[], pal_rays[], pal_star_dim[], pal_obj[], pal_claw[];",
-      "extern const uint8_t prize_pal[8]; extern const char * const prize_names[8]; extern const char * const world_names[4]; extern const char font_order[];",
-      "extern const uint8_t * const world_tiles[4]; extern const uint8_t * const world_map[4]; extern const uint8_t * const world_attr[4];",
-      "extern const uint8_t world_ntiles[4]; extern const uint8_t world_bank[4];", "", "#endif"]
+      "extern const uint8_t food_bg_tiles[], food_spr_tiles[], stalk_tiles[], turkey_tiles[], scare_rc_tiles[];",
+      "extern const palette_color_t * const pal_bg_world[5];",
+      "extern const palette_color_t pal_text[], pal_rays[], pal_star_dim[], pal_obj[], pal_claw[], pal_obj_hv[], pal_rays_hv[];",
+      "extern const uint8_t prize_pal[8]; extern const char * const prize_names[8]; extern const char * const world_names[5]; extern const char font_order[];",
+      "extern const uint8_t * const world_tiles[5]; extern const uint8_t * const world_map[5]; extern const uint8_t * const world_attr[5];",
+      "extern const uint8_t world_ntiles[5]; extern const uint8_t world_bank[5];", "", "#endif"]
 
 os.makedirs(OUT_DIR, exist_ok=True)
 open(os.path.join(OUT_DIR, "assets0.c"), "w").write("\n".join(b0) + "\n")
@@ -549,10 +598,10 @@ if "--preview" in sys.argv:
                         for dy in range(S):
                             for dx in range(S): im.putpixel(((tx*8+x)*S+dx, (ty*8+y)*S+dy), pal[t[y][x]])
         return im
-    sheet = Image.new("RGB", (4 * 160 * S + 30, 144 * S), "white")
+    sheet = Image.new("RGB", (5 * 160 * S + 30, 144 * S), "white")
     for i, (ts, scr) in enumerate(worlds_out):
         sheet.paste(render(scr, ts, world_bg_pals(WORLDS[i])), (i * (160 * S + 10), 0))
     sheet.save(os.path.join(OUT_DIR, "..", "build", "worlds_preview.png"))
-    pals = world_bg_pals(WORLDS[0]); pals[1] = TEXT_PAL
+    pals = world_bg_pals(WORLDS[1]); pals[1] = TEXT_PAL
     render(title, ts_title, pals).save(os.path.join(OUT_DIR, "..", "build", "title_preview.png"))
 print("assets written")

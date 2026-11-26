@@ -6,6 +6,8 @@ pairs.  Note byte 0 = rest, 0xFF = end of track.
 
 Main theme: "In the Hall of the Mountain King" (Edvard Grieg, 1875 - public
 domain), arranged in A minor.
+
+Harvest theme (Thanksgiving world): an original G major barn-dance waltz in 3/4.
 """
 import os, re
 
@@ -67,6 +69,20 @@ ET = 8
 end_mel = track("E5:2 G5:2 C6:2 B5 A5 G5:4 R:1 A5:2 B5:2 C6:3 D6 E6:5 R:2  C6 E6 G6:3 E6 C6 G5:4 R:1 A5 C6 E6:3 C6 A5 G5:6 R:2", ET)
 end_bas = pizz("C3 G2 C3 G2 F2 C3 F2 C3 G2 D3 G2 D3 C3 G2 E2 C3 A2 E2 A2 E2 F2 C3 F2 C3 G2 D3 G2 D3 C3 G2 C3 C3", ET)
 
+# ----------------------------------------------------------------- harvest theme (original; G major barn dance, 3/4)
+HT = 8  # frames per eighth at tempo 8: bar = 48 frames
+H1 = "G4:2 B4 D5:2 B4  C5:2 E5 D5:2 B4  A4:2 B4 C5 B4 A4  G4:2 A4 B4:3"
+H2 = "G4:2 B4 D5:2 G5  E5:2 D5 C5:2 E5  D5 C5 B4 A4:2 F#4  G4:6"
+H3 = "C5:2 C5 E5:2 C5  B4:2 B4 D5:2 B4  A4:2 A4 C5 B4 A4  B4:2 G4 D4:3"
+H4 = "C5:2 E5 G5:2 E5  D5:2 B4 G4:2 B4  A4 B4 C5 D5:2 F#4  G4:3 R:3"
+harvest_mel = track(" ".join([H1, H2, H3, H4, H1, H2]), HT)          # 24 bars, 144 eighths
+HB1 = "G2 D3 B2  C3 G2 E3  D3 A2 F#2  G2 D3 G2"
+HB2 = "G2 D3 B2  C3 G2 C3  D3 A2 D3  G2 D2 G2"
+HB3 = "C3 G2 E2  G2 D3 B2  D3 A2 F#2  G2 D3 G2"
+HB4 = "C3 E3 G2  G2 B2 D3  D3 F#2 A2  G2 D3 G2"
+harvest_bas = pizz(" ".join([HB1, HB2, HB3, HB4, HB1, HB2]), HT)     # 72 plucks = 144 eighths (loops in sync)
+assert sum(harvest_mel[1::2]) == sum(harvest_bas[1::2]) == 144 * HT
+
 def c_arr(name, data, loop):
     data = data + [0xFF, 1 if loop else 0]
     s = f"const uint8_t {name}[{len(data)}] = {{\n"
@@ -89,5 +105,8 @@ src.append(c_arr("mus_clear_mel", clear_mel, False))
 src.append(c_arr("mus_clear_bass", clear_bas, False))
 src.append(c_arr("mus_end_mel", end_mel, True))
 src.append(c_arr("mus_end_bass", end_bas, True))
+src.append(c_arr("mus_harvest_mel", harvest_mel, True))
+src.append(c_arr("mus_harvest_bass", harvest_bas, True))
 open(OUT, "w").write("\n".join(src))
 print("theme length (frames):", sum(melody[1::2]), "bass:", sum(bass[1::2]))
+print("harvest length (frames):", sum(harvest_mel[1::2]), "bass:", sum(harvest_bas[1::2]))

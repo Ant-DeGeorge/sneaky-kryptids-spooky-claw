@@ -41,12 +41,13 @@
 #define SPR_RC 80
 
 extern const uint8_t common_tiles[], sprite_tiles[], title_tiles[], title_map[], title_attr[], reveal_tiles[], reveal_map[], reveal_attr[];
-extern const uint8_t w1_tiles[], w1_map[], w1_attr[], w2_tiles[], w2_map[], w2_attr[], w3_tiles[], w3_map[], w3_attr[], w4_tiles[], w4_map[], w4_attr[];
+extern const uint8_t w0_tiles[], w0_map[], w0_attr[], w1_tiles[], w1_map[], w1_attr[], w2_tiles[], w2_map[], w2_attr[], w3_tiles[], w3_map[], w3_attr[], w4_tiles[], w4_map[], w4_attr[];
 extern const uint8_t big_rc_tiles[], space_rc_tiles[], bat_tiles[], flag_tiles[], ship_tiles[];
-extern const palette_color_t * const pal_bg_world[4];
-extern const palette_color_t pal_text[], pal_rays[], pal_star_dim[], pal_obj[], pal_claw[];
-extern const uint8_t prize_pal[8]; extern const char * const prize_names[8]; extern const char * const world_names[4]; extern const char font_order[];
-extern const uint8_t * const world_tiles[4]; extern const uint8_t * const world_map[4]; extern const uint8_t * const world_attr[4];
-extern const uint8_t world_ntiles[4]; extern const uint8_t world_bank[4];
+extern const uint8_t food_bg_tiles[], food_spr_tiles[], stalk_tiles[], turkey_tiles[], scare_rc_tiles[];
+extern const palette_color_t * const pal_bg_world[5];
+extern const palette_color_t pal_text[], pal_rays[], pal_star_dim[], pal_obj[], pal_claw[], pal_obj_hv[], pal_rays_hv[];
+extern const uint8_t prize_pal[8]; extern const char * const prize_names[8]; extern const char * const world_names[5]; extern const char font_order[];
+extern const uint8_t * const world_tiles[5]; extern const uint8_t * const world_map[5]; extern const uint8_t * const world_attr[5];
+extern const uint8_t world_ntiles[5]; extern const uint8_t world_bank[5];
 
 #endif

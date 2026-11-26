@@ -10,6 +10,7 @@ extern const uint8_t mus_fanfare_mel[], mus_fanfare_bass[];
 extern const uint8_t mus_party_mel[], mus_party_bass[];
 extern const uint8_t mus_lose_mel[], mus_lose_bass[];
 extern const uint8_t mus_clear_mel[], mus_clear_bass[], mus_end_mel[], mus_end_bass[];
+extern const uint8_t mus_harvest_mel[], mus_harvest_bass[];
 
 typedef struct { const uint8_t *start, *pos; uint8_t timer; uint8_t on; } Track;
 static Track mel, bas;
@@ -62,9 +63,24 @@ static const Step s_chime[]   = {{5,1,0,0x80,0xA1,LO(1985),HI(1985)}, {12,1,0,0x
 static const Step s_starpop[] = {{4,1,0x00,0x80,0xC1,LO(1849),HI(1849)}, {4,1,0,0x80,0xC1,LO(1955),HI(1955)}, {12,1,0,0x80,0xC3,LO(2003),HI(2003)}, END};
 static const Step s_whoosh[]  = {{24,4,0,0x00,0x73,0x34,0x80}, {24,4,0,0x00,0x53,0x23,0x80}, END};
 
+// ---- Harvest (Thanksgiving world)
+// gobble: nasal 12.5% duty warble, then a falling "obble" (sweep down)
+static const Step s_gobble[]  = {{3,1,0,0x00,0xB1,LO(1750),HI(1750)}, {3,1,0,0x00,0xB1,LO(1798),HI(1798)},
+                                 {3,1,0,0x00,0xB1,LO(1714),HI(1714)}, {3,1,0,0x00,0xB1,LO(1798),HI(1798)},
+                                 {3,1,0,0x00,0xA1,LO(1750),HI(1750)}, {3,1,0,0x00,0xA1,LO(1825),HI(1825)},
+                                 {3,1,0,0x00,0xA1,LO(1714),HI(1714)}, {12,1,0x1D,0x00,0x92,LO(1798),HI(1798)}, END};
+// crunch: three dry noise bites with silent gaps (NR42 0x08 = DAC on, vol 0)
+static const Step s_crunch[]  = {{3,4,0,0x00,0xF1,0x34,0x80}, {2,4,0,0x00,0x08,0x34,0x80},
+                                 {3,4,0,0x00,0xD1,0x3C,0x80}, {2,4,0,0x00,0x08,0x3C,0x80},
+                                 {4,4,0,0x00,0xB1,0x45,0x80}, {8,4,0,0x00,0x82,0x56,0x80}, END};
+// harvest horn: "toot-TOOOT" D4 -> G4, slow fade
+static const Step s_horn[]    = {{10,1,0,0x80,0xC3,LO(1602),HI(1602)}, {3,1,0,0x80,0x08,LO(1602),HI(1602)},
+                                 {32,1,0,0x80,0xC5,LO(1714),HI(1714)}, END};
+
 static const Step * const sfx_table[] = {
     s_move, s_drop, s_grab, s_rise, s_plop, s_poof, s_giggle, s_miss, s_boing, s_sparkle, s_start, s_nope, s_ding,
-    s_alarm, s_bonk, s_rasp, s_gold, s_hop, s_shake, s_crack, s_squeak, s_jet, s_chime, s_starpop, s_whoosh
+    s_alarm, s_bonk, s_rasp, s_gold, s_hop, s_shake, s_crack, s_squeak, s_jet, s_chime, s_starpop, s_whoosh,
+    s_gobble, s_crunch, s_horn
 };
 
 static const Step *sfx_pos;
@@ -100,7 +116,7 @@ static void start_track(Track *t, const uint8_t *d) { t->start = t->pos = d; t->
 
 void music_play(uint8_t song) {
     music_stop();
-    if (song != MUS_THEME) tempo = 8;
+    if (song != MUS_THEME && song != MUS_HARVEST) tempo = 8;
     song_is_theme = (song == MUS_THEME);
     switch (song) {
         case MUS_THEME:   start_track(&mel, mus_theme_mel);   start_track(&bas, mus_theme_bass);   mel_env = 0x52; break;
@@ -110,6 +126,7 @@ void music_play(uint8_t song) {
         case MUS_LOSE:    start_track(&mel, mus_lose_mel);    start_track(&bas, mus_lose_bass);    mel_env = 0x97; break;
         case MUS_CLEAR:   start_track(&mel, mus_clear_mel);   start_track(&bas, mus_clear_bass);   mel_env = 0xA4; break;
         case MUS_END:     start_track(&mel, mus_end_mel);     start_track(&bas, mus_end_bass);     mel_env = 0x83; break;
+        case MUS_HARVEST: start_track(&mel, mus_harvest_mel); start_track(&bas, mus_harvest_bass); mel_env = 0x62; break;
     }
 }
 

@@ -57,7 +57,7 @@ while f < FR:
             glow = rd("_claw_pal_") in (1, 3)
             bats_near = False
             if WAITBATS:
-                for b in range(2 if LV == 5 else 1):
+                for b in range(2 if LV == 7 else 1):   # L7 = W4-2 (two bats); Harvest + W4-1 = one bird
                     bx = (rd("_bat_fx", b * 2) | (rd("_bat_fx", b * 2 + 1) << 8)) >> 4
                     if abs(bx + 8 - x) < 30: bats_near = True
             if bats_near: pass
